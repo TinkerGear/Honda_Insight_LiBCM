@@ -16,6 +16,9 @@
     #include <Arduino.h>
     #include <avr/wdt.h>
 
+    //Added by AfterEffect for 3700W Charger
+    #include <PWM.h>
+
     //Define LiBCM system include files.  Note: Do not alter order.
     #include "../config.h"
     #include "cpu_map.h"

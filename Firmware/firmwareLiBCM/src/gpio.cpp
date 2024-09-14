@@ -168,6 +168,13 @@ void gpio_setGridCharger_powerLevel(char powerLevel)
             case 'H': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,     0); break;
             case 'Z':     pinMode(PIN_ABSTRACTED_GRID_CURRENT, INPUT); break; //reduces power consumption
             default:  analogWrite(PIN_ABSTRACTED_GRID_CURRENT,   255); break; //disable charger
+
+        #elif defined GRIDCHARGER_IS_3700W
+            case '0': pwmWrite(PIN_ABSTRACTED_GRID_CURRENT,   0); break; //negative logic
+            case 'L': pwmWrite(PIN_ABSTRACTED_GRID_CURRENT,    185); break; //JTS2doLater: Determine correct grid charger values
+            case 'M': pwmWrite(PIN_ABSTRACTED_GRID_CURRENT,    141); break;
+            case 'H': pwmWrite(PIN_ABSTRACTED_GRID_CURRENT,     106); break;
+            default:  pwmWrite(PIN_ABSTRACTED_GRID_CURRENT,   255); break; //disable charger
         #endif
     }
 }

@@ -4,6 +4,9 @@
 
 #include "src/libcm.h"
 
+int32_t GridChargerFrequency = 100; // frequency in hz
+
+
 void setup() //~t=2 milliseconds, BUT NOTE this doesn't include CPU_CLOCK warmup or bootloader delay
 {
     gpio_begin();
@@ -22,6 +25,8 @@ void setup() //~t=2 milliseconds, BUT NOTE this doesn't include CPU_CLOCK warmup
     #elif defined RUN_BRINGUP_TESTER_MOTHERBOARD
         bringupTester_motherboard(); //this function never returns
     #endif
+
+    SetPinFrequency(PIN_ABSTRACTED_GRID_CURRENT, GridChargerFrequency);
 
     if (gpio_keyStateNow() == GPIO_KEY_ON){ LED(3,ON); } //turn LED3 on if LiBCM (re)boots while driving
 

@@ -82,6 +82,10 @@
             #define PIN_ABSTRACTED_GRID_CURRENT PIN_GRID_PWM
             #define PIN_ABSTRACTED_GRID_EN      PIN_GRID_EN
             //these chargers don't support voltage control
+        #elif defined GRIDCHARGER_IS_3700W
+            #define PIN_ABSTRACTED_GRID_CURRENT PIN_GRID_PWM
+            #define PIN_ABSTRACTED_GRID_EN      PIN_GRID_EN
+            //these chargers don't support voltage control
         #else
             #error (Grid charger type not specified in config.h)
         #endif
