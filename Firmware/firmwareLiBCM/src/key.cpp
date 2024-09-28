@@ -13,6 +13,38 @@ uint8_t keyState_previous = KEYSTATE_UNINITIALIZED;
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
+void setFrequency_GridPWM_100Hz(void)
+  {
+      // Set Timer4 to Fast PWM mode
+      TCCR4A = (1 << WGM41);
+      TCCR4B = (1 << WGM42) | (1 << WGM43);
+
+      // Set prescaler to 64
+      TCCR4B |= (1 << CS41) | (1 << CS40);
+
+      // Set top value for 100 Hz frequency
+      ICR4 = 2499;
+
+     // Enable PWM on pin 8 (OC4C)
+      TCCR4A |= (1 << COM4C1);
+}
+
+void setFrequency_GridPWM_3921Hz(void)
+{
+  // Set Timer4 to Fast PWM mode
+  TCCR4A = (1 << WGM41);
+  TCCR4B = (1 << WGM42) | (1 << WGM43);
+
+  // Set prescaler to 1 (no prescaling)
+  TCCR4B |= (1 << CS40);
+
+  // Set top value for 3921 Hz frequency
+  ICR4 = 4081;  // 16MHz / 3921Hz - 1
+
+  // Enable PWM on pin 8 (OC4C)
+  TCCR4A |= (1 << COM4C1);
+}
+
 void key_handleKeyEvent_off(void)
 {
     Serial.print(F("OFF"));
@@ -27,6 +59,12 @@ void key_handleKeyEvent_off(void)
     vPackSpoof_handleKeyOFF();
     //JTS2doLater: Add built-in test suite, including VREF, VCELL, Balancing, temp verify (batt and OEM), etc.
     eeprom_checkForExpiredFirmware();
+    #ifdef GRIDCHARGER_IS_3700W
+        setFrequency_GridPWM_100Hz();
+    #elif defined GRIDCHARGER_IS_NOT_1500W
+    #elif defined GRIDCHARGER_IS_3700W
+    #endif
+
 
     time_latestKeyOff_ms_set(millis()); //MUST RUN LAST!
 }
@@ -43,6 +81,11 @@ void key_handleKeyEvent_on(void)
     LTC68042configure_programVolatileDefaults(); //turn discharge resistors off, set ADC LPF, etc.
     LTC68042configure_handleKeyStateChange();
     LED(1,HIGH);
+    #ifdef GRIDCHARGER_IS_3700W
+        setFrequency_GridPWM_3921Hz();
+    #elif defined GRIDCHARGER_IS_NOT_1500W
+    #elif defined GRIDCHARGER_IS_3700W
+    #endif
 
     time_latestKeyOn_ms_set(millis()); //MUST RUN LAST!
 }
