@@ -168,6 +168,13 @@ void gpio_setGridCharger_powerLevel(char powerLevel)
             case 'H': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,     0); break;
             case 'Z':     pinMode(PIN_ABSTRACTED_GRID_CURRENT, INPUT); break; //reduces power consumption
             default:  analogWrite(PIN_ABSTRACTED_GRID_CURRENT,   255); break; //disable charger
+
+        #elif defined GRIDCHARGER_IS_3700W
+            case '0': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,   0); break; //disable charger
+            case 'L': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,    1800); break;
+            case 'M': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,    1460); break;
+            case 'H': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,     1000); break;
+            default:  analogWrite(PIN_ABSTRACTED_GRID_CURRENT,   0); break; //disable charger
         #endif
     }
 }

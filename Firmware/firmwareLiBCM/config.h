@@ -34,6 +34,7 @@
     //choose which grid charger is installed
         //#define GRIDCHARGER_IS_NOT_1500W //All 5AhG3 Kits & 'standard' 47Ah FoMoCo Kits
         //#define GRIDCHARGER_IS_1500W //'faster' 47Ah FoMoCo Kits only
+        //#define GRIDCHARGER_IS_3700W //Gen2 Volt Charger adapted by AfterEffect
 
     //choose ONE of the following
     //must match actual "current hack" hardware configuration:
@@ -43,7 +44,7 @@
 
     //choose which display to use
     //using both displays simultaneously could cause timing issues (FYI: the Serial Monitor prints '*' each time the loop period is violated)
-        #define LCD_4X20_CONNECTED  //display included with all LiBCM Kits
+        //#define LCD_4X20_CONNECTED  //display included with all LiBCM Kits
         //#define LIDISPLAY_CONNECTED //optional color touch screen display //JTS2doLater: mudder has not yet tested this code. Use at your own risk.
 
 
