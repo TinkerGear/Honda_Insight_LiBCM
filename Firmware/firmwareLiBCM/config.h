@@ -41,6 +41,7 @@
         #define SET_CURRENT_HACK_40 //actually +45.8% //most LiBCM users installed this hardware option
         //#define SET_CURRENT_HACK_20 //actually +25.0%
         //#define SET_CURRENT_HACK_00 //OEM configuration (no current hack installed inside MCM)
+        
 
     //choose which display to use
     //using both displays simultaneously could cause timing issues (FYI: the Serial Monitor prints '*' each time the loop period is violated)
@@ -67,6 +68,9 @@
         //#define VOLTAGE_SPOOFING_ASSIST_ONLY_BINARY   //increase assist power by statically spoofing pack voltage during heavy assist
         //#define VOLTAGE_SPOOFING_ASSIST_AND_REGEN     //increase assist and regen power by variably spoofing pack voltage //DEPRECATED (regen too strong)
         //#define VOLTAGE_SPOOFING_LINEAR               //increase assist and regen power by requesting peak current level as per OEM (compatible with 100A fuse)
+        #define VOLTAGE_SPOOFING_VARIABLE_60S_BULL_DOG //Bull Dog's variable voltage spoofing for 60S configs. Only apply full assist above 2100 RPM or P1440 will likely occur.
+
+
 
     //48S ignores this parameter (choose any value)
     //60S ONLY: to increase assist power, choose the lowest spoofed voltage that doesn't cause p-codes during heavy assist (e.g. P1440)
