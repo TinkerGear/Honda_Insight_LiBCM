@@ -173,7 +173,7 @@ void gpio_setGridCharger_powerLevel(char powerLevel)
             case '0': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,   0); break; //disable charger
             case 'L': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,    1800); break;
             case 'M': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,    1460); break;
-            case 'H': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,     1000); break;
+            case 'H': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,     275); break;
             default:  analogWrite(PIN_ABSTRACTED_GRID_CURRENT,   0); break; //disable charger
         #endif
     }
