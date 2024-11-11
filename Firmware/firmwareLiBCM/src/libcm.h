@@ -51,3 +51,5 @@
     #include "batteryHistory.h"
 
 #endif
+
+extern uint8_t setPowerLevel;

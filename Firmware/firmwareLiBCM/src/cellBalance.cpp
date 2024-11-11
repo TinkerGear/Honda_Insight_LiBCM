@@ -52,7 +52,7 @@ void configureDischargeResistors(void)
 
     cellsAreBalancing = NO;
 
-    if (LTC68042result_hiCellVoltage_get() > CELL_VREST_85_PERCENT_SoC) { cellDischargeVoltageThreshold = CELL_VREST_85_PERCENT_SoC; }
+    if (LTC68042result_hiCellVoltage_get() > CELL_VREST_89_PERCENT_SoC) { cellDischargeVoltageThreshold = CELL_VREST_89_PERCENT_SoC; }
     else { cellDischargeVoltageThreshold = LTC68042result_loCellVoltage_get() + balanceHysteresis; }
 
     //determine which cells to balance

@@ -168,11 +168,11 @@ bool SoC_isThermalManagementAllowed(void)
         else if (restingCellVoltage >= 40740) { estimatedSoC =  92; }
         else if (restingCellVoltage >= 40620) { estimatedSoC =  91; }
         else if (restingCellVoltage >= 40500) { estimatedSoC =  90; }
-        else if (restingCellVoltage >= 40400) { estimatedSoC =  89; }
+        else if (restingCellVoltage >= CELL_VREST_89_PERCENT_SoC) { estimatedSoC =  89; } // Changed to 89%, or 40400 - AfterEffect
         else if (restingCellVoltage >= 40300) { estimatedSoC =  88; }
         else if (restingCellVoltage >= 40200) { estimatedSoC =  87; }
         else if (restingCellVoltage >= 40100) { estimatedSoC =  86; }
-        else if (restingCellVoltage >= CELL_VREST_85_PERCENT_SoC) { estimatedSoC =  85; } //max cell voltage for long lifetime
+        else if (restingCellVoltage >= 40000) { estimatedSoC =  85; } //max cell voltage for long lifetime. Was CELL_VREST_85_PERCENT_SoC
         else if (restingCellVoltage >= 39880) { estimatedSoC =  84; }
         else if (restingCellVoltage >= 39760) { estimatedSoC =  83; }
         else if (restingCellVoltage >= 39640) { estimatedSoC =  82; }
