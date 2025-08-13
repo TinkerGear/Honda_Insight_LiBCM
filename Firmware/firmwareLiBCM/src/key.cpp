@@ -64,6 +64,11 @@ void key_handleKeyEvent_on(void)
     LTC68042configure_programVolatileDefaults(); //turn discharge resistors off, set ADC LPF, etc.
     LTC68042configure_handleKeyStateChange();
     LED(1,HIGH);
+    #ifdef GRIDCHARGER_IS_3700W
+        setFrequency_GridPWM_3921Hz();
+    #elif defined GRIDCHARGER_IS_NOT_1500W
+    #elif defined GRIDCHARGER_IS_3700W
+    #endif
 
     time_latestKeyOn_ms_set(millis()); //MUST RUN LAST!
 }
