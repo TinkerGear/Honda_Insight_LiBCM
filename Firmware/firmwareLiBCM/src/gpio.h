@@ -1,6 +1,3 @@
-//Copyright 2021-2024(c) John Sullivan
-//github.com/doppelhub/Honda_Insight_LiBCM
-
 #ifndef gpio_h
     #define gpio_h
 
@@ -42,7 +39,7 @@
     void gpio_turnGridCharger_on( void);
     void gpio_turnGridCharger_off(void);
 
-    void gpio_setGridCharger_powerLevel(char powerLevel);
+    void gpio_setGridCharger_powerLevel(int powerLevel);
 
     void gpio_turnBuzzer_on_highFreq(void);
     void gpio_turnBuzzer_on_lowFreq(void);
@@ -50,7 +47,6 @@
     void gpio_playSound_firmwareUpdated(void);
 
     bool gpio_isCoverInstalled(void);
-    bool gpio_isUserSwitchOn(void);
 
     void gpio_turnHMI_on(void);
     void gpio_turnHMI_off(void);
@@ -61,7 +57,7 @@
 
     void gpio_turnLiBCM_off(void);
 
-    bool gpio1_getState(void); //JTS2doLater: replace with existing gpio_getPinState
+    bool gpio1_getState(void);
     bool gpio2_getState(void);
     bool gpio3_getState(void);
 

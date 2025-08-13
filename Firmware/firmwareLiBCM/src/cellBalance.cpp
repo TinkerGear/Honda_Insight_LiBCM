@@ -1,4 +1,4 @@
-//Copyright 2021-2024(c) John Sullivan
+//Copyright 2021-2023(c) John Sullivan
 //github.com/doppelhub/Honda_Insight_LiBCM
 
 //cell balancing Functions
@@ -39,7 +39,6 @@ bool cellBalance_areCellsBalancing(void) { return cellsAreBalancing; }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-//JTS2doLater: Always allow discharge balancing when a cell is overcharged (for safety)
 //JTS2doLater: Write keyOff test that measures each cell voltage twice: once with discharge resistor off, and again with resistor on.
 //             Then verify voltage drop, which means the discharge resistor is turning off and on.  If there isn't enough resolution,
 //             another method would be to wait a few hours for pack voltages to settle, then log all cell voltages an hour apart.
@@ -53,7 +52,7 @@ void configureDischargeResistors(void)
 
     cellsAreBalancing = NO;
 
-    if (LTC68042result_hiCellVoltage_get() > CELL_VREST_85_PERCENT_SoC) { cellDischargeVoltageThreshold = CELL_VREST_85_PERCENT_SoC; }
+    if (LTC68042result_hiCellVoltage_get() > CELL_VREST_89_PERCENT_SoC) { cellDischargeVoltageThreshold = CELL_VREST_89_PERCENT_SoC; }
     else { cellDischargeVoltageThreshold = LTC68042result_loCellVoltage_get() + balanceHysteresis; }
 
     //determine which cells to balance

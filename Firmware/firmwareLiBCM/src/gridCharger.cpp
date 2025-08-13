@@ -1,4 +1,4 @@
-//Copyright 2021-2024(c) John Sullivan
+//Copyright 2021-2023(c) John Sullivan
 //github.com/doppelhub/Honda_Insight_LiBCM
 #include "libcm.h"
 
@@ -7,6 +7,7 @@
 uint32_t latestPlugin_ms = 0;
 uint32_t latestChargerDisable_ms = 0;
 uint32_t minGridOffPeriod_ms = GRID_MIN_OFF_PERIOD__NONE_ms;
+uint8_t setPowerLevel = DEFAULT_CHARGE_POWER; // Variable to hold the current power level
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -43,14 +44,14 @@ uint16_t determineMaxAllowedCellVoltage(void)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-uint8_t gridCharger_isAllowedNow(void)
+uint8_t isChargingAllowed(void)
 {
     //order is important
     //external checks
     if (gpio_isGridChargerPluggedInNow()    == NO                                       ) { return NO__CHARGER_UNPLUGGED;       }
     if (key_getSampledState()               == KEYSTATE_ON                              ) { return NO__KEY_IS_ON;               }
     //cell voltage checks
-    if (LTC68042result_hiCellVoltage_get()   > CELL_VREST_85_PERCENT_SoC                ) { return NO__ATLEASTONECELL_TOO_HIGH; }
+    if (LTC68042result_hiCellVoltage_get()   > CELL_VREST_89_PERCENT_SoC                ) { return NO__ATLEASTONECELL_TOO_HIGH; }
     if (LTC68042result_loCellVoltage_get()   < CELL_VMIN_GRIDCHARGER                    ) { return NO__ATLEASTONECELL_TOO_LOW;  }
     if (LTC68042result_hiCellVoltage_get()   > CELL_VMAX_GRIDCHARGER                    ) { return NO__ATLEASTONECELL_FULL;     }
     if (LTC68042result_hiCellVoltage_get()   > determineMaxAllowedCellVoltage()         ) { return NO__CELL_VOLTAGE_HYSTERESIS; }
@@ -111,30 +112,47 @@ void processChargerDisableReason(uint8_t canWeCharge)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
+void gridCharger_Power_set(uint8_t serialPowerLevel) { setPowerLevel = serialPowerLevel; }
+uint8_t gridCharger_Power_get(void) { return setPowerLevel; }
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
 void chargerControlSignals_handler(void)
 {
     static uint8_t isChargingAllowed_previous = NO__UNINITIALIZED;
-           uint8_t isChargingAllowed_now      = gridCharger_isAllowedNow();
+           uint8_t isChargingAllowed_now      = isChargingAllowed();
+           uint8_t chargePowerLevel = 0;
+           uint16_t currentVoltage = LTC68042result_loCellVoltage_get();
 
     if (isChargingAllowed_now == YES__CHARGING_ALLOWED)
     {
         if (isChargingAllowed_previous != YES__CHARGING_ALLOWED)
         {
             Serial.print(F("\nCharging"));
-            adc_calibrateBatteryCurrentSensorOffset(DEBUG_TEXT_ENABLED);
+            adc_calibrateBatteryCurrentSensorOffset();
         }
+
+        if (currentVoltage >= CELL_VTAPER_GRIDCHARGER)
+        {
+            // Calculate taper factor: gradually decrease powerLevel down to 10% as it approaches CELL_VMAX_GRIDCHARGER
+            float taperFactor = map(currentVoltage, CELL_VTAPER_GRIDCHARGER, CELL_VMAX_GRIDCHARGER, 100, 10) / 100.0;
+            chargePowerLevel = constrain(static_cast<int>(chargePowerLevel * taperFactor), 10, chargePowerLevel); // Limit to at least 10%
+        }
+        else chargePowerLevel = setPowerLevel;
 
         runFansIfNeeded(); //JTS2doLater: run fans as needed even when charging not allowed (e.g. to cool a hot pack)
         gpio_turnGridCharger_on();
-        gpio_setGridCharger_powerLevel('H'); //JTS2doLater: Limit charge current if temp is too high or low
+        gpio_setGridCharger_powerLevel(chargePowerLevel); //JTS2doLater: Limit charge current if temp is too high or low
         buzzer_requestTone(BUZZER_REQUESTOR_GRIDCHARGER, BUZZER_OFF);
     }
     else
     {
         gpio_turnGridCharger_off();
+        //Serial.print(F("\nActual Power level: "));
+        //Serial.print(chargePowerLevel,DEC);
 
-        if (isChargingAllowed_now == NO__CHARGER_UNPLUGGED) { gpio_setGridCharger_powerLevel('Z'); } //saves power
-        else                                                { gpio_setGridCharger_powerLevel('0'); } //redundant safety when charger plugged in but disabled
+        if (isChargingAllowed_now == NO__CHARGER_UNPLUGGED) { gpio_setGridCharger_powerLevel(0); } //saves power
+        else                                                { gpio_setGridCharger_powerLevel(0); } //redundant safety when charger plugged in but disabled
 
         if (isChargingAllowed_previous == YES__CHARGING_ALLOWED)
         {
@@ -159,8 +177,9 @@ void chargerControlSignals_handler(void)
 void handleEvent_plugin(void)
 {
     Serial.print(F("Plugged In"));
-    gpio_setGridCharger_powerLevel('0');
-    gpio_turnPowerSensors_on(); //to measure current //JTS2doLater: to save power, move into YES__CHARGING_ALLOWED (solve powerup hysteresis)
+    gpio_setGridCharger_powerLevel(0);
+    gpio_turnPowerSensors_on(); //so we can measure current //to save power, it would be nice to move this into YES__CHARGING_ALLOWED (solve powerup hysteresis)
+                                //JTS2doLater: Does turning these sensors on with the key off cause LiBCM's BATTSCI RS485 driver to output voltage into MCM?
     latestPlugin_ms = millis();
 }
 
@@ -170,11 +189,10 @@ void handleEvent_unplug(void)
 {
     Serial.print(F("Unplugged"));
     gpio_turnGridCharger_off();
-    gpio_setGridCharger_powerLevel('Z'); //reduces power consumption
+    gpio_setGridCharger_powerLevel(0); //reduces power consumption
     gpio_turnPowerSensors_off();
     fan_requestSpeed(FAN_REQUESTOR_GRIDCHARGER, FAN_OFF);
     buzzer_requestTone(BUZZER_REQUESTOR_GRIDCHARGER, BUZZER_OFF);
-    time_latestGridChargerUnplug_set();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

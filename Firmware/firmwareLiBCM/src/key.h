@@ -1,6 +1,3 @@
-//Copyright 2021-2024(c) John Sullivan
-//github.com/doppelhub/Honda_Insight_LiBCM
-
 #ifndef key_h
     #define key_h
 
@@ -12,7 +9,5 @@
     void key_stateChangeHandler(void);
 
     uint8_t key_getSampledState(void);
-
-    void keyOn_coldBootTasks(void);
 
 #endif

@@ -1,4 +1,4 @@
-//Copyright 2021-2024(c) John Sullivan
+//Copyright 2021-2023(c) John Sullivan
 //github.com/doppelhub/Honda_Insight_LiBCM
 
 //all digitalRead(), digitalWrite(), analogRead(), analogWrite() functions live here
@@ -39,11 +39,16 @@ void gpio_begin(void)
     digitalWrite(PIN_TURNOFFLiBCM,LOW);
 
     pinMode(PIN_HMI_EN,OUTPUT);
+
+    //Controls BCM current sensor, constant 5V load, and BATTSCI/METSCI biasing
     pinMode(PIN_SENSOR_EN,OUTPUT);
+    gpio_turnPowerSensors_on(); //if the key is off when LiBCM first powers up, the keyOff handler will turn the sensors back off
+
     pinMode(PIN_LED1,OUTPUT);
     pinMode(PIN_LED2,OUTPUT);
     pinMode(PIN_LED3,OUTPUT);
     pinMode(PIN_LED4,OUTPUT);
+
     analogWrite(PIN_MCME_PWM,0);
     pinMode(PIN_FAN_PWM,OUTPUT);
     pinMode(PIN_FANOEM_LOW,OUTPUT);
@@ -58,8 +63,7 @@ void gpio_begin(void)
     //JTS2doLater: Turn all this stuff off when the key is off
     TCCR1B = (TCCR1B & B11111000) | B00000001; // Set F_PWM to 31372.55 Hz //pins D11(fan) & D12()
     TCCR3B = (TCCR3B & B11111000) | B00000001; // Set F_PWM to 31372.55 Hz //pins D2() & D3() & D5(VPIN_OUT)
-    TCCR4B = (TCCR4B & B11111000) | B00000010; // Set F_PWM to  3921.16 Hz //pins D7(MCMe) & D8(gridPWM) & D9() //JTS2doLater: use higher frequency when keyOn
-    //TCCR4B = (TCCR4B & B11111000) | B00000100; // Set F_PWM to  122.55 Hz //pins D7(MCMe) & D8(gridPWM) & D9() //JTS2doLater: use lower frequency when charging
+    TCCR4B = (TCCR4B & B11111000) | B00000010; // Set F_PWM to  3921.16 Hz //pins D7(MCMe) & D8(gridPWM) & D9()
     //TCCR5B is set in Buzzer functions
 }
 
@@ -140,31 +144,47 @@ void gpio_turnGridCharger_off(void) { digitalWrite(PIN_ABSTRACTED_GRID_EN, LOW);
 /////////////////////////////////////////////////////////////////////////////////////////
 
 //JTS2doLater: 1500W charger requires different PWM values due to additional parallel 2k7 resistor on voltage control pin
-void gpio_setGridCharger_powerLevel(char powerLevel)
+void gpio_setGridCharger_powerLevel(int powerLevel)
 {
+    uint16_t pwmValue = 0;
+
     switch (powerLevel)
     {
-        #ifdef GRIDCHARGER_IS_1500W //wiring is different from other chargers
-            case '0': pinMode(PIN_ABSTRACTED_GRID_VOLTAGE,OUTPUT);
-                 digitalWrite(PIN_ABSTRACTED_GRID_VOLTAGE,  HIGH); analogWrite(PIN_ABSTRACTED_GRID_CURRENT,    0); break; //disable grid charger
-            case 'L': pinMode(PIN_ABSTRACTED_GRID_VOLTAGE,OUTPUT);
-                 digitalWrite(PIN_ABSTRACTED_GRID_VOLTAGE,   LOW); analogWrite(PIN_ABSTRACTED_GRID_CURRENT,    0); break; //enable grid charger low power
-          //case 'M': pinMode(PIN_ABSTRACTED_GRID_VOLTAGE,OUTPUT);
-               //digitalWrite(PIN_ABSTRACTED_GRID_VOLTAGE,   LOW); analogWrite(PIN_ABSTRACTED_GRID_CURRENT,   60); break; //PWM value TBD
-            case 'H': pinMode(PIN_ABSTRACTED_GRID_VOLTAGE,OUTPUT);
-                 digitalWrite(PIN_ABSTRACTED_GRID_VOLTAGE,   LOW); analogWrite(PIN_ABSTRACTED_GRID_CURRENT,  255); break; //enable grid charger high power
-            case 'Z': pinMode(PIN_ABSTRACTED_GRID_VOLTAGE, INPUT);     pinMode(PIN_ABSTRACTED_GRID_CURRENT,INPUT); break; //reduces power consumption    
-            default:  pinMode(PIN_ABSTRACTED_GRID_VOLTAGE,OUTPUT);
-                 digitalWrite(PIN_ABSTRACTED_GRID_VOLTAGE,  HIGH); analogWrite(PIN_ABSTRACTED_GRID_CURRENT,    0); break; //disable charger
-        
-        #elif defined GRIDCHARGER_IS_NOT_1500W
-            case '0': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,   255); break; //negative logic
-            case 'L': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,    80); break; //JTS2doLater: Determine correct grid charger values
-            case 'M': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,    40); break;
-            case 'H': analogWrite(PIN_ABSTRACTED_GRID_CURRENT,     0); break;
-            case 'Z':     pinMode(PIN_ABSTRACTED_GRID_CURRENT, INPUT); break; //reduces power consumption
-            default:  analogWrite(PIN_ABSTRACTED_GRID_CURRENT,   255); break; //disable charger
-        #endif
+        case 0: // Explicitly handle disabling the charger
+            #ifdef GRIDCHARGER_47Ah_LiBCM_6_5A
+                pinMode(PIN_ABSTRACTED_GRID_VOLTAGE, OUTPUT);
+                digitalWrite(PIN_ABSTRACTED_GRID_VOLTAGE, HIGH); 
+                analogWrite(PIN_ABSTRACTED_GRID_CURRENT, 0); 
+            #elif defined(GRIDCHARGER_5AhG3_ALL)
+                analogWrite(PIN_ABSTRACTED_GRID_CURRENT, 255); // Disable charger with negative logic
+            #elif defined(GRIDCHARGER_47Ah_LiBCM_2_1A)
+                analogWrite(PIN_ABSTRACTED_GRID_CURRENT, 255); // Disable charger with negative logic
+            #elif defined(GRIDCHARGER_47Ah_VOLTGEN2_12A)
+                analogWrite(PIN_ABSTRACTED_GRID_CURRENT, 0); // Disable charger
+            #endif
+            break;
+
+        default:
+            #ifdef GRIDCHARGER_47Ah_LiBCM_6_5A
+                // Map percentage to PWM value (0-255), limit to 5-95%
+                pwmValue = map(powerLevel, 0, 100, 13, 242);
+                pinMode(PIN_ABSTRACTED_GRID_VOLTAGE, OUTPUT);
+                digitalWrite(PIN_ABSTRACTED_GRID_VOLTAGE, LOW); 
+                analogWrite(PIN_ABSTRACTED_GRID_CURRENT, pwmValue);
+            #elif defined(GRIDCHARGER_5AhG3_ALL)
+                // Map percentage to PWM value (0-255), use reverse logic
+                pwmValue = map(powerLevel, 0, 100, 255, 0);
+                analogWrite(PIN_ABSTRACTED_GRID_CURRENT, pwmValue);
+            #elif defined(GRIDCHARGER_47Ah_LiBCM_2_1A)
+                // Map percentage to PWM value (0-255), use reverse logic
+                pwmValue = map(powerLevel, 0, 100, 255, 0);
+                analogWrite(PIN_ABSTRACTED_GRID_CURRENT, pwmValue);
+            #elif defined(GRIDCHARGER_47Ah_VOLTGEN2_12A)
+                // Map percentage to PWM value (275-1800)
+                pwmValue = map(powerLevel, 0, 100, 1800, 275);
+                analogWrite(PIN_ABSTRACTED_GRID_CURRENT, pwmValue);
+            #endif
+            break;
     }
 }
 
@@ -215,10 +235,6 @@ bool gpio_isCoverInstalled(void)
         return true;
     #endif
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////
-
-bool gpio_isUserSwitchOn(void) { return digitalRead(PIN_USER_SW); }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 

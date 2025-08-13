@@ -1,4 +1,4 @@
-//Copyright 2021-2024(c) John Sullivan
+//Copyright 2021-2023(c) John Sullivan
 //github.com/doppelhub/Honda_Insight_LiBCM
 
 //cpu_map.h - CPU and pin mapping configuration file
@@ -28,8 +28,6 @@
         #define PIN_GPIO1      A14 //with daughterboard: heater (if installed) //without daughterboard: not used
         #define PIN_GPIO2      A15
 
-        #define PIN_USB_RX          0
-        #define PIN_USB_TX          1
         #define PIN_METSCI_DE       2
         #define PIN_METSCI_REn      3
         #define PIN_TURNOFFLiBCM    4
@@ -55,6 +53,11 @@
         #define PIN_LED4           48
         #define PIN_TEMP_EN        49
 
+        //LiControl
+        #define PIN_SPI_MISO_MIMA  50    // MISO
+        #define PIN_SPI_MOSI_MIMA  51    // MOSI
+        #define PIN_SPI_SCK_MIMA   52    // SCK
+
         #define PIN_SPI_CS SS
 
         //Serial3
@@ -73,14 +76,31 @@
         #define DEBUG_CLK 21
 
         //1500 watt charger controlled by daughterboard, which uses different pinout
-        #ifdef GRIDCHARGER_IS_1500W
+        #ifdef GRIDCHARGER_47Ah_LiBCM_6_5A
             #ifdef BATTERY_TYPE_5AhG3
                 #error (invalid grid charger selection in config.h: 5AhG3 LiBCM kits dont support 1500 watt charging)
             #endif
             #define PIN_ABSTRACTED_GRID_CURRENT PIN_GPIO3
             #define PIN_ABSTRACTED_GRID_EN      PIN_GRID_PWM
             #define PIN_ABSTRACTED_GRID_VOLTAGE PIN_GPIO2
-        #elif defined GRIDCHARGER_IS_NOT_1500W
+        #elif defined GRIDCHARGER_5AhG3_ALL
+            #ifdef BATTERY_TYPE_47AhFoMoCo
+                #error (invalid grid charger selection in config.h: Incompatible charger option for FoMoCo LiBCM kits)
+            #endif
+            #define PIN_ABSTRACTED_GRID_CURRENT PIN_GRID_PWM
+            #define PIN_ABSTRACTED_GRID_EN      PIN_GRID_EN
+            //these chargers don't support voltage control
+        #elif defined GRIDCHARGER_47Ah_LiBCM_2_1A
+            #ifdef BATTERY_TYPE_5AhG3
+                #error (invalid grid charger selection in config.h: Select "GRIDCHARGER_5AhG3_ALL" for 5AhG3 LiBCM kits)
+            #endif
+            #define PIN_ABSTRACTED_GRID_CURRENT PIN_GRID_PWM
+            #define PIN_ABSTRACTED_GRID_EN      PIN_GRID_EN
+            //these chargers don't support voltage control
+        #elif defined GRIDCHARGER_47Ah_VOLTGEN2_12A
+            #ifdef BATTERY_TYPE_5AhG3
+                #error (invalid grid charger selection in config.h: 5AhG3 LiBCM kits dont support 3000 watt charging)
+            #endif
             #define PIN_ABSTRACTED_GRID_CURRENT PIN_GRID_PWM
             #define PIN_ABSTRACTED_GRID_EN      PIN_GRID_EN
             //these chargers don't support voltage control

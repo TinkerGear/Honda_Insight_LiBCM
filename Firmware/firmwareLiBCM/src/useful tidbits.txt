@@ -43,9 +43,3 @@
 //See how many lines of code exist:
 //Search as regex:
 //^.*\S+.*$
-
-//LiBCM bootloader fuse settings:
-// High: 0xEF
-// Low : 0xD8
-// ext : 0xFD
-// lock: 0x2F

@@ -1,5 +1,4 @@
-//Copyright 2021-2024(c) John Sullivan
-//github.com/doppelhub/Honda_Insight_LiBCM
+//JTS2doLater: eeprom.c isn't wrapped into MVP yet 
 
 #include <EEPROM.h>
 #include "libcm.h"
@@ -8,7 +7,7 @@
 //eeprom  read halts CPU for QTY4 cycles
 //eeprom write halts CPU for QTY2 cycles and takes ~3.3 ms to complete
 
-//JTS2doLater: Store program checksum in EEPROM; verify equal on keyOff
+//JTS2doLater: does Arduino implement 2560 brownout detector?
 
 //store the date and time customer compiled the source code in program memory
 const uint8_t COMPILE_DATE_PROGRAM[BYTES_IN_DATE] = __DATE__; //Format: 'Mmm DD YYYY' //Ex: 'Jan 23 2022' //'Mar  5 2022'
@@ -97,22 +96,23 @@ bool wasFirmwareJustUpdated(void)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-//returns runtime hours since last firmware update
-uint16_t eeprom_hoursSinceLastFirmwareUpdate_get(void)
+uint16_t eeprom_uptimeStoredInEEPROM_hours_get(void)
 {
     return readFromEEPROM_uint16(EEPROM_ADDRESS_HOURS_SINCE_UPDATE);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
+//JTS2doNow: Change FW expiration method
 //Limit calls to this function (EEPROM has limited write lifetime)
-void eeprom_hoursSinceLastFirmwareUpdate_set(uint16_t hourCount)
+void uptimeStoredInEEPROM_hours_set(uint16_t hourCount)
 {
     writeToEEPROM_uint16(EEPROM_ADDRESS_HOURS_SINCE_UPDATE, hourCount);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
+//JTS2doNext: only read eeprom status once per keyOn event (so it won't expire while car is running`)
 //Takes 4 clock cycles.  EEPROM read limit: infinite
 uint8_t eeprom_expirationStatus_get(void)
 { 
@@ -127,35 +127,27 @@ void EEPROM_expirationStatus_set(uint8_t newFirmwareStatus) { EEPROM.update(EEPR
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-//only call this function once during each keyOff event
-uint16_t hoursSincePreviousKeyOff(void)
+//JTS2doNext: rewrite this function so it can store more than 2^32-1 millis()
+//add value stored in EEPROM (from last keyOFF event) to previous keyOFF time
+uint16_t EEPROM_calculateTotalHoursSinceLastFirmwareUpdate(void)
 {
-    static uint32_t remainder_ms = 0;
-    uint32_t delta_ms = millis() - time_latestKeyOff_ms_get() + remainder_ms;
-    uint16_t delta_hours = 0;
+    uint32_t timeSincePreviousKeyOff_ms = millis() - time_latestKeyOff_ms_get();
+    uint16_t timeSincePreviousKeyOff_hours = (uint16_t)(timeSincePreviousKeyOff_ms / MILLISECONDS_PER_HOUR);
+  
+    uint16_t totalHours = eeprom_uptimeStoredInEEPROM_hours_get() + timeSincePreviousKeyOff_hours;
+    if (totalHours > REQUIRED_FIRMWARE_UPDATE_PERIOD_HOURS) { totalHours = REQUIRED_FIRMWARE_UPDATE_PERIOD_HOURS; } //coerce
 
-    while (delta_ms >= MILLISECONDS_PER_HOUR)
-    {
-        delta_ms -= MILLISECONDS_PER_HOUR;
-        delta_hours++;
-    }
-
-    remainder_ms = delta_ms;
-
-    Serial.print(F("\nRemainder_ms: "));
-    Serial.print(remainder_ms);
-
-    return delta_hours;
+    return totalHours;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-void eeprom_keyOffCheckForExpiredFirmware(void)
+void eeprom_checkForExpiredFirmware(void)
 { 
     if (wasFirmwareJustUpdated() == true)
     {
         //user just updated the firmware, so...
-        eeprom_hoursSinceLastFirmwareUpdate_set(0); //reset hour counter to zero
+        uptimeStoredInEEPROM_hours_set(0); //reset hour counter to zero
         compileTimestamp_writeToEEPROM(); //store new compile date in EEPROM (so we can compare again on future keyOFF events)
         EEPROM_expirationStatus_set(FIRMWARE_UNEXPIRED);
 
@@ -164,12 +156,11 @@ void eeprom_keyOffCheckForExpiredFirmware(void)
     }
     else //user didn't update the firmware
     { 
-        uint16_t newUptime_hours = hoursSincePreviousKeyOff() + eeprom_hoursSinceLastFirmwareUpdate_get();
-        if (newUptime_hours > REQUIRED_FIRMWARE_UPDATE_PERIOD_HOURS) { newUptime_hours = REQUIRED_FIRMWARE_UPDATE_PERIOD_HOURS; }
-        eeprom_hoursSinceLastFirmwareUpdate_set(newUptime_hours);
+        uint16_t newUptime_hours = EEPROM_calculateTotalHoursSinceLastFirmwareUpdate();
+        uptimeStoredInEEPROM_hours_set(newUptime_hours); //store new total uptime in EEPROM
 
-        Serial.print(F("\nTotal hours since last firmware update: "));
-        if (newUptime_hours >= REQUIRED_FIRMWARE_UPDATE_PERIOD_HOURS)
+        Serial.print(F("\nTotal hours since firmware last uploaded: "));
+        if (newUptime_hours == REQUIRED_FIRMWARE_UPDATE_PERIOD_HOURS) //newUptime_hours is bounded to REQUIRED_FIRMWARE_UPDATE_PERIOD_HOURS
         {
             Serial.print(F("EXPIRED\nOpen Beta ALERT: Firmware update required (linsight.org/downloads)\nLiBCM disabled until firmware is updated"));
             EEPROM_expirationStatus_set(FIRMWARE_EXPIRED);

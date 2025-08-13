@@ -1,4 +1,4 @@
-//Copyright 2021-2024(c) John Sullivan
+//Copyright 2021-2023(c) John Sullivan
 //github.com/doppelhub/Honda_Insight_LiBCM
 
 #ifndef debugLED_h
@@ -8,7 +8,12 @@
 
     void LED(uint8_t LED_number, bool illuminated);
 
-    void LED_heartbeat(void);
+    void blinkLED1(void);
 
-    void LED_turnAllOff(void);
+    void blinkLED2(void);
+
+    void blinkLED3(void);
+
+    void blinkLED4(void);
+
 #endif

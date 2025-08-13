@@ -1,4 +1,4 @@
-//Copyright 2021-2024(c) John Sullivan
+//Copyright 2021-2023(c) John Sullivan
 //github.com/doppelhub/Honda_Insight_LiBCM
 
 //functions related to ignition (key) status
@@ -13,22 +13,40 @@ uint8_t keyState_previous = KEYSTATE_UNINITIALIZED;
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
+void setFrequency_GridPWM_100Hz(void)
+  {
+      TCCR4A = (1 << WGM41);
+      TCCR4B = (1 << WGM42) | (1 << WGM43);
+
+      TCCR4B |= (1 << CS41) | (1 << CS40);
+
+      ICR4 = 2499;
+
+      TCCR4A |= (1 << COM4C1);
+}
+
+void setFrequency_GridPWM_3921Hz(void) {
+    TCCR4A = 0b00100001;
+    TCCR4B = 0b00000010;
+    TCCR4C = 0b00000000;
+    ICR4 = 227;
+}
+
 void key_handleKeyEvent_off(void)
 {
     Serial.print(F("OFF"));
-    LED(1,OFF);
-    LED(3,OFF);
+    LED(1,LOW);
     BATTSCI_disable(); //Must disable BATTSCI when key is off to prevent backdriving MCM
     METSCI_disable();
     LTC68042cell_acquireAllCellVoltages();
     SoC_updateUsingLatestOpenCircuitVoltage(); //JTS2doLater: Add ten minute delay before VoC->SoC LUT
-    adc_calibrateBatteryCurrentSensorOffset(DEBUG_TEXT_ENABLED);
+    adc_calibrateBatteryCurrentSensorOffset();
     gpio_turnPowerSensors_off();
     LTC68042configure_handleKeyStateChange();
     vPackSpoof_handleKeyOFF();
     //JTS2doLater: Add built-in test suite, including VREF, VCELL, Balancing, temp verify (batt and OEM), etc.
-    eeprom_keyOffCheckForExpiredFirmware();
-    LTC68042configure_doesActualPackSizeMatchUserConfig();
+    eeprom_checkForExpiredFirmware();
+    setFrequency_GridPWM_100Hz();
 
     time_latestKeyOff_ms_set(millis()); //MUST RUN LAST!
 }
@@ -37,6 +55,7 @@ void key_handleKeyEvent_off(void)
 
 void key_handleKeyEvent_on(void)
 {
+    setFrequency_GridPWM_3921Hz();
     delay( eeprom_delayKeyON_ms_get() ); //this is a test tool to verify LiBCM is turning on fast enough to prevent P-code //JTS2doLater: Delete
     Serial.print(F("ON"));
     BATTSCI_enable();
@@ -44,7 +63,6 @@ void key_handleKeyEvent_on(void)
     gpio_turnPowerSensors_on();
     LTC68042configure_programVolatileDefaults(); //turn discharge resistors off, set ADC LPF, etc.
     LTC68042configure_handleKeyStateChange();
-    vPackSpoof_handleKeyON();
     LED(1,HIGH);
 
     time_latestKeyOn_ms_set(millis()); //MUST RUN LAST!
@@ -52,12 +70,10 @@ void key_handleKeyEvent_on(void)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-//JTS2doLater: make 'KEYSTATE_OFF_JUSTOCCURRED' persist for one second (before reporting 'keyOff')
 bool key_didStateChange(void)
 {
     bool didKeyStateChange = NO;
 
-    //JTS2doLater: move to handler
     if (gpio_keyStateNow() == GPIO_KEY_ON) { keyState_sampled = KEYSTATE_ON; }
     else                                   { keyState_sampled = KEYSTATE_OFF; }
 
@@ -101,31 +117,6 @@ uint8_t key_getSampledState(void)
 {
     if (keyState_previous == KEYSTATE_OFF_JUSTOCCURRED) { return KEYSTATE_ON;      } //prevent signal noise from accidentally turning LiBCM off
     else                                                { return keyState_sampled; }
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////
-
-void keyOn_coldBootTasks(void)
-{
-    //initialize hardware
-    gpio_turnPowerSensors_on();
-    LTC68042configure_pulseChipSelectLow(SPECIFIED_MAX_WAKEUP_TIME_LTCCORE_MICROSECONDS); //wake LTC6804
-    LTC68042cell_nextVoltages(); //first call starts LTC6804 conversion
-    uint32_t timeSinceLTC6804conversionStarted_us = millis();
-
-    //other startup initialization tasks
-    vPackSpoof_handleKeyON();
-    keyState_previous = KEYSTATE_ON; //prevent key_handleKeyEvent_on() from repeating many of these tasks
-    METSCI_enable();
-    LED(3,ON);
-
-    //process cell voltages
-    while(millis() - timeSinceLTC6804conversionStarted_us < LTC6804_MAX_CONVERSION_TIME_ms) { ; } //wait for conversion to finish
-    while(LTC68042cell_nextVoltages() != CELL_DATA_PROCESSED) { ; } //read all cell voltages back
-    vPackSpoof_setVoltage();
-    SoC_setBatteryStateNow_percent(SoC_estimateFromRestingCellVoltage_percent());
-    BATTSCI_enable(); //must occur after we have valid Vcell data
-    adc_calibrateBatteryCurrentSensorOffset(DEBUG_TEXT_DISABLED); //current sensor settles almost immediately
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
